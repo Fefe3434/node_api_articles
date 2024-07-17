@@ -6,9 +6,11 @@ const NotFoundError = require("./errors/not-found");
 const userRouter = require("./api/users/users.router");
 const usersController = require("./api/users/users.controller");
 const authMiddleware = require("./middlewares/auth");
-require("./api/articles/articles.schema"); // temporaire
-const app = express();
+const articleRouter = require("./api/articles/articles.router");
 
+require("./api/articles/articles.schema");
+
+const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
@@ -29,6 +31,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/users", authMiddleware, userRouter);
+app.use("/api/articles", authMiddleware, articleRouter);
+app.get("/api/users/:userId/articles", usersController.getUserArticles); 
 app.post("/login", usersController.login);
 
 app.use("/", express.static("public"));
@@ -40,8 +44,7 @@ app.use((req, res, next) => {
 app.use((error, req, res, next) => {
   const status = error.status || 500;
   const message = error.message;
-  res.status(status);
-  res.json({
+  res.status(status).json({
     status,
     message,
   });
