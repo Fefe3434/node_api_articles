@@ -4,67 +4,75 @@ const jwt = require("jsonwebtoken");
 const config = require("../config");
 const mockingoose = require("mockingoose");
 const Article = require("../api/articles/articles.schema");
-const articleService = require("../api/articles/articles.service");
 
-describe("Article API tests", () => {
+describe("Articles API", () => {
   let token;
-  const USER_ID = "fakeUserId";
-  const ARTICLE_ID = "fakeArticleId";
-  const MOCK_ARTICLES = [
-    {
-      _id: ARTICLE_ID,
-      title: "Sample Article",
-      content: "This is a sample article.",
-      user: USER_ID,
-      status: "draft",
-    },
-  ];
-  const MOCK_ARTICLE_CREATED = {
-    title: "New Article",
-    content: "Content of the new article.",
+  const USER_ID = "fake_user_id";
+  const ADMIN_TOKEN = jwt.sign({ userId: USER_ID, role: "admin" }, config.secretJwtToken);
+  const USER_TOKEN = jwt.sign({ userId: USER_ID, role: "member" }, config.secretJwtToken);
+
+  const MOCK_ARTICLE = {
+    _id: "fake_article_id",
+    title: "Test Title",
+    content: "Test Content",
     user: USER_ID,
     status: "draft",
   };
-  const MOCK_ARTICLE_UPDATED = {
-    title: "Updated Article",
-    content: "Updated content of the article.",
-    status: "published",
+
+  const MOCK_NEW_ARTICLE = {
+    _id: "new_article_id",
+    title: "New Article",
+    content: "Some content",
+    user: USER_ID,
+    status: "draft",
+  };
+
+  const MOCK_UPDATED_ARTICLE = {
+    ...MOCK_ARTICLE,
+    title: "Updated Title",
   };
 
   beforeEach(() => {
-    token = jwt.sign({ userId: USER_ID }, config.secretJwtToken);
-    mockingoose(Article).toReturn(MOCK_ARTICLES, "find");
-    mockingoose(Article).toReturn(MOCK_ARTICLE_CREATED, "save");
-    mockingoose(Article).toReturn(MOCK_ARTICLE_UPDATED, "findOneAndUpdate");
-    mockingoose(Article).toReturn(MOCK_ARTICLE_UPDATED, "deleteOne");
+    mockingoose(Article).toReturn(MOCK_NEW_ARTICLE, "save");
+
+    mockingoose(Article).toReturn([MOCK_ARTICLE], "find");
+
+    mockingoose(Article).toReturn(MOCK_UPDATED_ARTICLE, "findOneAndUpdate");
+
+    mockingoose(Article).toReturn(MOCK_ARTICLE, "findOneAndDelete");
   });
 
-  test("[Articles] Create Article", async () => {
+  test("Create Article", async () => {
     const res = await request(app)
       .post("/api/articles")
-      .send(MOCK_ARTICLE_CREATED)
-      .set("x-access-token", token);
+      .send({ title: "New Article", content: "Some content" })
+      .set("x-access-token", USER_TOKEN);
     expect(res.status).toBe(201);
-    expect(res.body.title).toBe(MOCK_ARTICLE_CREATED.title);
+    expect(res.body.title).toBe("New Article");
   });
 
-  test("[Articles] Update Article", async () => {
+  test("Update Article as Admin", async () => {
     const res = await request(app)
-      .put(`/api/articles/${ARTICLE_ID}`)
-      .send(MOCK_ARTICLE_UPDATED)
-      .set("x-access-token", token);
+      .put("/api/articles/fake_article_id")
+      .send({ title: "Updated Title" })
+      .set("x-access-token", ADMIN_TOKEN);
     expect(res.status).toBe(200);
-    expect(res.body.title).toBe(MOCK_ARTICLE_UPDATED.title);
+    expect(res.body.title).toBe("Updated Title");
   });
 
-  test("[Articles] Delete Article", async () => {
+  test("Delete Article as Admin", async () => {
     const res = await request(app)
-      .delete(`/api/articles/${ARTICLE_ID}`)
-      .set("x-access-token", token);
+      .delete("/api/articles/fake_article_id")
+      .set("x-access-token", ADMIN_TOKEN);
     expect(res.status).toBe(204);
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
+  test("Get Articles by User", async () => {
+    const res = await request(app)
+      .get(`/api/articles/users/${USER_ID}/articles`)
+      .set("x-access-token", USER_TOKEN);
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body[0].user).toBeDefined();
   });
 });

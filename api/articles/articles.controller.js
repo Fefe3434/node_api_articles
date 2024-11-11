@@ -1,20 +1,14 @@
-const articleService = require("./articles.service");
+const Article = require("./articles.schema");
+const NotFoundError = require("../../errors/not-found");
 const UnauthorizedError = require("../../errors/unauthorized");
 
 class ArticlesController {
   async create(req, res, next) {
     try {
-      const { user } = req;
-      if (!user) {
-        throw new UnauthorizedError("User must be logged in to create an article");
-      }
-      const articleData = {
-        ...req.body,
-        user: user._id,
-      };
-      const article = await articleService.create(articleData);
-      req.io.emit("article:create", article);
-      res.status(201).json(article);
+      const article = new Article({ ...req.body, user: req.user.userId });
+      const savedArticle = await article.save();
+      req.io.emit("article:create", savedArticle);
+      res.status(201).json(savedArticle);
     } catch (err) {
       next(err);
     }
@@ -22,12 +16,13 @@ class ArticlesController {
 
   async update(req, res, next) {
     try {
-      const { user } = req;
-      if (user.role !== "admin") {
-        throw new UnauthorizedError("Only admins can update articles");
+      if (req.user.role !== "admin") {
+        throw new UnauthorizedError();
       }
-      const { id } = req.params;
-      const article = await articleService.update(id, req.body);
+      const article = await Article.findByIdAndUpdate(req.params.id, req.body, { new: true });
+      if (!article) {
+        throw new NotFoundError();
+      }
       req.io.emit("article:update", article);
       res.json(article);
     } catch (err) {
@@ -37,14 +32,24 @@ class ArticlesController {
 
   async delete(req, res, next) {
     try {
-      const { user } = req;
-      if (user.role !== "admin") {
-        throw new UnauthorizedError("Only admins can delete articles");
+      if (req.user.role !== "admin") {
+        throw new UnauthorizedError();
       }
-      const { id } = req.params;
-      await articleService.delete(id);
-      req.io.emit("article:delete", { id });
+      await Article.findByIdAndDelete(req.params.id);
+      req.io.emit("article:delete", { id: req.params.id });
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getByUser(req, res, next) {
+    try {
+      const articles = await Article.find({ user: req.params.userId }).populate({
+        path: "user",
+        select: "-password",
+      });
+      res.json(articles);
     } catch (err) {
       next(err);
     }
