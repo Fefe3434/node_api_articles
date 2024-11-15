@@ -13,6 +13,7 @@ class UsersController {
       next(err);
     }
   }
+
   async getById(req, res, next) {
     try {
       const id = req.params.id;
@@ -25,6 +26,7 @@ class UsersController {
       next(err);
     }
   }
+
   async create(req, res, next) {
     try {
       const user = await usersService.create(req.body);
@@ -35,6 +37,7 @@ class UsersController {
       next(err);
     }
   }
+
   async update(req, res, next) {
     try {
       const id = req.params.id;
@@ -46,6 +49,7 @@ class UsersController {
       next(err);
     }
   }
+
   async delete(req, res, next) {
     try {
       const id = req.params.id;
@@ -56,19 +60,23 @@ class UsersController {
       next(err);
     }
   }
+
   async login(req, res, next) {
     try {
       const { email, password } = req.body;
-      const userId = await usersService.checkPasswordUser(email, password);
-      if (!userId) {
-        throw new UnauthorizedError();
+      const user = await usersService.findByEmail(email);
+
+      if (!user || !(await usersService.comparePassword(password, user.password))) {
+        throw new UnauthorizedError("Invalid credentials");
       }
-      const token = jwt.sign({ userId }, config.secretJwtToken, {
-        expiresIn: "3d",
-      });
-      res.json({
-        token,
-      });
+
+      const token = jwt.sign(
+        { userId: user._id, role: user.role },
+        config.secretJwtToken,
+        { expiresIn: "3d" }
+      );
+
+      res.json({ token });
     } catch (err) {
       next(err);
     }

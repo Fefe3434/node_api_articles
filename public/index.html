@@ -105,7 +105,7 @@
             },
             methods: {
                 async login() {
-                    const { token } = await axios.post('/login', {
+                    const { token } = await axios.post('/', {
                         email: this.email,
                         password: this.password
                     }).then(res => res.data);
@@ -116,7 +116,10 @@
                 },
                 async loadArticles() {
                     if (this.userToken) {
-                        const response = await axios.get('/api/articles/users/me/articles', {
+                        const decodedToken = JSON.parse(atob(this.userToken.split('.')[1])); 
+                        const userId = decodedToken.userId; 
+
+                        const response = await axios.get(`/api/articles/users/${userId}/articles`, {
                             headers: { 'x-access-token': this.userToken }
                         });
                         this.articles = response.data;

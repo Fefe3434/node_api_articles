@@ -60,6 +60,15 @@ describe("Articles API", () => {
     expect(res.body.title).toBe("Updated Title");
   });
 
+  test("Unauthorize to update Article as memeber", async () => {
+    const res = await request(app)
+      .put("/api/articles/fake_article_id")
+      .send({ title: "Updated Title" })
+      .set("x-access-token", USER_TOKEN);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe("Only admins can update articles");
+  });
+
   test("Delete Article as Admin", async () => {
     const res = await request(app)
       .delete("/api/articles/fake_article_id")
@@ -67,6 +76,16 @@ describe("Articles API", () => {
     expect(res.status).toBe(204);
   });
 
+  test("Unauthorized to delete Article as member", async () => {
+    const res = await request(app)
+      .delete("/api/articles/fake_article_id")
+      .set("x-access-token", USER_TOKEN);
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe("Only admins can delete articles");
+
+  });
+
+  
   test("Get Articles by User", async () => {
     const res = await request(app)
       .get(`/api/articles/users/${USER_ID}/articles`)

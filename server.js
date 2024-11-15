@@ -14,7 +14,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 io.on("connection", (socket) => {
-  console.log("a user connected");
+  console.log("A user connected");
 });
 
 app.use((req, res, next) => {
@@ -25,9 +25,11 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 
+app.post("/", usersController.login); 
+app.post("/api/users", usersController.create); 
+
 app.use("/api/users", authMiddleware, userRouter);
-app.use("/api/articles", articlesRouter);
-app.post("/login", usersController.login);
+app.use("/api/articles", authMiddleware, articlesRouter);
 
 app.use("/", express.static("public"));
 
@@ -38,8 +40,7 @@ app.use((req, res, next) => {
 app.use((error, req, res, next) => {
   const status = error.status || 500;
   const message = error.message;
-  res.status(status);
-  res.json({
+  res.status(status).json({
     status,
     message,
   });

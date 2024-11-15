@@ -1,34 +1,35 @@
 const User = require("./users.model");
 const bcrypt = require("bcrypt");
 
-class UserService {
-  getAll() {
+class UsersService {
+  async getAll() {
     return User.find({}, "-password");
   }
-  get(id) {
+
+  async get(id) {
     return User.findById(id, "-password");
   }
-  create(data) {
+
+  async create(data) {
     const user = new User(data);
     return user.save();
   }
-  update(id, data) {
+
+  async update(id, data) {
     return User.findByIdAndUpdate(id, data, { new: true });
   }
-  delete(id) {
+
+  async delete(id) {
     return User.deleteOne({ _id: id });
   }
-  async checkPasswordUser(email, password) {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return false;
-    }
-    const bool = await bcrypt.compare(password, user.password);
-    if (!bool) {
-      return false;
-    }
-    return user._id;
+
+  async findByEmail(email) {
+    return User.findOne({ email });
+  }
+
+  async comparePassword(password, hash) {
+    return bcrypt.compare(password, hash);
   }
 }
 
-module.exports = new UserService();
+module.exports = new UsersService();
